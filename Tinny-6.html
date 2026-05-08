@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="J.A.R.V.I.S."/>
+<meta name="theme-color" content="#010c14"/>
+<title>J.A.R.V.I.S.</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#010c14;color:#00e6ff;font-family:'Courier New',monospace}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:rgba(0,230,255,0.3)}
+
+@keyframes spinCW  {to{transform:rotate(360deg)}}
+@keyframes spinCCW {to{transform:rotate(-360deg)}}
+@keyframes blink   {0%,100%{opacity:1}50%{opacity:.15}}
+@keyframes scan    {0%{top:-4px}100%{top:100vh}}
+@keyframes fadeUp  {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,68,68,.5)}70%{box-shadow:0 0 0 14px rgba(255,68,68,0)}}
+@keyframes spkPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,255,136,.5)}70%{box-shadow:0 0 0 14px rgba(0,255,136,0)}}
+@keyframes corePulse{0%,100%{r:16}50%{r:19}}
+@keyframes wavebar {0%,100%{height:4px}50%{height:22px}}
+
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;border-bottom:1px solid rgba(0,230,255,.18);background:rgba(0,4,10,.95);flex-shrink:0;z-index:10}
+#main{flex:1;display:grid;grid-template-columns:155px 1fr 155px;gap:5px;padding:5px;overflow:hidden;min-height:0}
+#botbar{display:flex;align-items:center;justify-content:space-between;padding:3px 10px;border-top:1px solid rgba(0,230,255,.14);background:rgba(0,4,10,.95);flex-shrink:0}
+
+/* ── Panel ── */
+.panel{position:relative;background:rgba(0,8,18,.9);border:1px solid rgba(0,230,255,.2);margin-bottom:7px}
+.panel:last-child{margin-bottom:0}
+.panel-title{display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid rgba(0,230,255,.1);font-size:9px;letter-spacing:3px;color:rgba(0,230,255,.5);text-transform:uppercase}
+.panel-title-dot{width:4px;height:4px;background:#00e6ff;box-shadow:0 0 5px #00e6ff;flex-shrink:0}
+.panel-title-line{flex:1;height:1px;background:rgba(0,230,255,.1)}
+.panel-body{padding:10px 12px}
+.corner{position:absolute;width:9px;height:9px}
+.c-tl{top:-1px;left:-1px;border-top:2px solid rgba(0,230,255,.65);border-left:2px solid rgba(0,230,255,.65)}
+.c-tr{top:-1px;right:-1px;border-top:2px solid rgba(0,230,255,.65);border-right:2px solid rgba(0,230,255,.65)}
+.c-bl{bottom:-1px;left:-1px;border-bottom:2px solid rgba(0,230,255,.65);border-left:2px solid rgba(0,230,255,.65)}
+.c-br{bottom:-1px;right:-1px;border-bottom:2px solid rgba(0,230,255,.65);border-right:2px solid rgba(0,230,255,.65)}
+
+/* ── Col layouts ── */
+#col-left,#col-right{display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;min-height:0}
+#col-left .panel,#col-right .panel{flex-shrink:0}
+#col-center{display:flex;flex-direction:column;gap:5px;overflow:hidden;min-height:0}
+#reactor-panel{flex-shrink:0}
+#chat-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+
+/* ── Topbar ── */
+.tb-title{font-family:'Orbitron',monospace;font-size:14px;letter-spacing:7px;color:#00e6ff;text-shadow:0 0 18px #00e6ff}
+.tb-sub{font-size:9px;color:rgba(0,230,255,.4);letter-spacing:2px}
+.tb-clock{font-family:'Orbitron',monospace;font-size:16px;color:#00e6ff;letter-spacing:4px;text-shadow:0 0 12px #00e6ff}
+.tb-badge{display:flex;align-items:center;gap:5px;padding:2px 8px;border:1px solid rgba(0,255,136,.4);font-size:9px;color:#00ff88;letter-spacing:2px}
+.tb-dot{width:5px;height:5px;border-radius:50%;background:#00ff88;animation:blink 2s infinite}
+#voiceToggle{padding:3px 10px;border:1px solid rgba(0,255,136,.5);background:rgba(0,255,136,.08);color:#00ff88;font-family:monospace;font-size:9px;letter-spacing:2px;cursor:pointer}
+#voiceToggle.off{border-color:rgba(255,107,53,.4);background:rgba(255,107,53,.08);color:#ff6b35}
+
+#reactor-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px}
+#reactor-svg-wrap{position:relative;width:160px;height:160px;display:block}
+#reactor-svg-wrap svg{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:50% 50%}
+.ring-cw {animation:spinCW  var(--dur) linear infinite;transform-origin:50% 50%}
+.ring-ccw{animation:spinCCW var(--dur) linear infinite;transform-origin:50% 50%}
+#voice-status{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:4px;color:rgba(0,230,255,.4);text-align:center}
+#voice-status.listening{color:#ff4444;text-shadow:0 0 10px #ff4444;animation:blink .8s infinite}
+#voice-status.speaking{color:#00ff88;text-shadow:0 0 10px #00ff88;animation:blink 1s infinite}
+#voice-status.loading{color:#ffaa00;text-shadow:0 0 10px #ffaa00;animation:blink .6s infinite}
+
+/* ── Waveform ── */
+#waveform{display:flex;align-items:flex-end;gap:2px;height:28px}
+.wave-bar{width:3px;background:#00e6ff;height:4px;border-radius:1px;opacity:.25;transition:height .15s}
+#waveform.active .wave-bar{opacity:.8;animation:wavebar .6s ease-in-out infinite}
+#waveform.active .wave-bar:nth-child(2){animation-delay:.05s}
+#waveform.active .wave-bar:nth-child(3){animation-delay:.1s}
+#waveform.active .wave-bar:nth-child(4){animation-delay:.15s}
+#waveform.active .wave-bar:nth-child(5){animation-delay:.2s}
+#waveform.active .wave-bar:nth-child(6){animation-delay:.25s}
+#waveform.active .wave-bar:nth-child(7){animation-delay:.3s}
+#waveform.active .wave-bar:nth-child(8){animation-delay:.35s}
+#waveform.active .wave-bar:nth-child(9){animation-delay:.1s}
+#waveform.active .wave-bar:nth-child(10){animation-delay:.05s}
+#waveform.active .wave-bar:nth-child(11){animation-delay:.2s}
+#waveform.active .wave-bar:nth-child(12){animation-delay:.15s}
+#waveform.active .wave-bar:nth-child(13){animation-delay:.08s}
+#waveform.active .wave-bar:nth-child(14){animation-delay:.22s}
+#waveform.active .wave-bar:nth-child(15){animation-delay:.12s}
+#waveform.active .wave-bar:nth-child(16){animation-delay:.18s}
+
+/* ── Mic Button ── */
+#micBtn{width:70px;height:70px;border-radius:50%;background:rgba(0,230,255,.08);border:2px solid #00e6ff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+#micBtn.listening{background:rgba(255,68,68,.15);border-color:#ff4444;animation:micPulse 1.2s infinite}
+#micBtn.speaking{border-color:#00ff88;animation:spkPulse 1.2s infinite}
+#mic-hint{font-size:9px;color:rgba(0,230,255,.4);letter-spacing:2px;text-align:center}
+
+/* ── Chat ── */
+#chat-status-bar{display:flex;align-items:center;gap:8px;padding:4px 10px;border-bottom:1px solid rgba(0,230,255,.1)}
+#chat-dot{width:5px;height:5px;border-radius:50%;background:#00e6ff;animation:blink 2s infinite}
+#chat-status-txt{font-family:'Orbitron',monospace;font-size:8px;letter-spacing:3px;color:rgba(0,230,255,.55)}
+#messages{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+.msg{display:flex;gap:8px;animation:fadeUp .35s ease}
+.msg.user{flex-direction:row-reverse;align-self:flex-end;max-width:88%}
+.msg.assistant{align-self:flex-start;max-width:88%}
+.msg-avatar{width:22px;height:22px;flex-shrink:0;background:rgba(0,230,255,.12);border:1px solid rgba(0,230,255,.5);display:flex;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:9px;color:#00e6ff}
+.msg-bubble{padding:7px 11px;font-size:11px;line-height:1.65;white-space:pre-wrap}
+.msg.assistant .msg-bubble{background:rgba(0,230,255,.04);border:1px solid rgba(0,230,255,.18);border-left:2px solid #00e6ff;color:rgba(200,240,255,.88)}
+.msg.user .msg-bubble{background:rgba(0,230,255,.09);border:1px solid rgba(0,230,255,.18);border-right:2px solid #00e6ff;color:#00e6ff}
+.msg-userdot{width:7px;height:7px;border-radius:50%;background:#00e6ff;flex-shrink:0;align-self:flex-end}
+.typing{display:flex;gap:5px;align-items:center;padding:8px 14px;background:rgba(0,230,255,.04);border:1px solid rgba(0,230,255,.18);border-left:2px solid #00e6ff}
+.typing-dot{width:6px;height:6px;border-radius:50%;background:#00e6ff;animation:blink 1.2s infinite}
+.typing-dot:nth-child(2){animation-delay:.2s}
+.typing-dot:nth-child(3){animation-delay:.4s}
+
+/* ── Input ── */
+#input-area{display:flex;gap:7px;align-items:center;padding:7px 10px;border-top:1px solid rgba(0,230,255,.12)}
+#input-prefix{font-family:'Orbitron',monospace;font-size:12px;color:#00e6ff}
+#msgInput{flex:1;background:rgba(0,230,255,.03);border:1px solid rgba(0,230,255,.25);padding:6px 10px;font-family:monospace;font-size:11px;color:#00e6ff;caret-color:#00e6ff;letter-spacing:.5px}
+#msgInput:focus{border-color:#00e6ff;outline:none}
+#sendBtn{padding:6px 12px;background:transparent;border:1px solid rgba(0,230,255,.35);color:#00e6ff;font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;cursor:pointer;transition:all .2s}
+#sendBtn:hover{background:rgba(0,230,255,.12)}
+#sendBtn:disabled{opacity:.35;cursor:default}
+
+/* ── Gauge ── */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+.gauge-val{font-family:monospace;font-size:13px;font-weight:bold;text-align:center;margin-top:-48px;margin-bottom:26px}
+.gauge-lbl{font-size:8px;letter-spacing:2px;color:rgba(0,230,255,.45);text-transform:uppercase}
+
+/* ── Misc ── */
+.bar-bg{height:3px;background:rgba(0,230,255,.08);margin-top:4px}
+.bar-fill{height:3px;background:#00e6ff;transition:width 1s}
+.module-row{display:flex;justify-content:space-between;align-items:center;padding:5px 7px;border-left:2px solid;background:rgba(0,230,255,.025);margin-bottom:4px}
+.weather-row{display:flex;align-items:center;gap:8px;padding:3px 6px;border-left:1px solid rgba(0,230,255,.2);margin-bottom:3px}
+.quick-cmd{width:100%;background:transparent;border:1px solid rgba(0,230,255,.15);color:rgba(0,230,255,.6);font-family:monospace;font-size:10px;padding:6px 8px;margin-bottom:5px;text-align:left;display:flex;align-items:center;gap:7px;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+.quick-cmd:hover{border-color:#00e6ff;color:#00e6ff;background:rgba(0,230,255,.06)}
+.quick-cmd-dot{width:4px;height:4px;border-radius:50%;background:#00e6ff;flex-shrink:0}
+
+/* ── Continuous Toggle ── */
+#continuousToggle:hover{border-color:#00e6ff;color:#00e6ff;background:rgba(0,230,255,.12)}
+#continuousToggle.off{border-color:rgba(255,107,53,.4);background:rgba(255,107,53,.08);color:#ff6b35}
+
+/* ── Scan overlay ── */
+#scanline{position:fixed;width:100%;height:3px;background:linear-gradient(transparent,rgba(0,230,255,.06),transparent);animation:scan 10s linear infinite;pointer-events:none;z-index:9999}
+#gridbg{position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.035}
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:2;background:radial-gradient(ellipse at 50% 50%,transparent 50%,rgba(0,0,0,.5) 100%)}
+
+/* ── Reactor clickable ── */
+#reactor-svg-wrap{transition:filter .2s}
+#reactor-svg-wrap:hover{filter:brightness(1.25) drop-shadow(0 0 18px #00e6ff)}
+#reactor-svg-wrap:active{filter:brightness(1.5) drop-shadow(0 0 28px #00e6ff)}
+
+/* ── Space key hint ── */
+#space-hint{position:fixed;bottom:38px;left:50%;transform:translateX(-50%);z-index:9998;pointer-events:none;display:flex;align-items:center;gap:8px;padding:5px 14px;background:rgba(0,4,10,.85);border:1px solid rgba(0,230,255,.25);font-family:'Orbitron',monospace;font-size:9px;color:rgba(0,230,255,.5);letter-spacing:2px;opacity:0;transition:opacity .4s}
+#space-hint.show{opacity:1}
+.key-badge{display:inline-flex;align-items:center;justify-content:center;padding:2px 8px;border:1px solid rgba(0,230,255,.45);background:rgba(0,230,255,.08);font-family:monospace;font-size:11px;color:#00e6ff;min-width:28px}
+
+/* == PORTRAIT TELEFON == */
+@media (orientation:portrait) and (max-width:900px){
+  #topbar{padding:3px 7px;gap:6px}
+  .tb-title{font-size:11px;letter-spacing:3px}
+  .tb-sub{font-size:7px;letter-spacing:1px;display:none}
+  .tb-clock{font-size:13px}
+  #main{
+    grid-template-columns:1fr;
+    overflow-y:auto;
+    overflow-x:hidden;
+    gap:6px;
+    padding:6px;
+    display:flex;
+    flex-direction:column;
+  }
+  #col-left{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:5px;
+    overflow:visible;
+    flex-shrink:0;
+    order:1;
+  }
+  #col-left .panel{margin-bottom:0}
+  #col-center{
+    overflow:visible;
+    flex-shrink:0;
+    order:2;
+    gap:5px;
+  }
+  #reactor-panel{flex-shrink:0}
+  #chat-panel{height:300px;flex-shrink:0;flex:none}
+  #col-right{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:5px;
+    overflow:visible;
+    flex-shrink:0;
+    order:3;
+  }
+  #col-right .panel{margin-bottom:0}
+  #reactor-wrap{padding:8px;gap:5px;flex-direction:row;flex-wrap:wrap;justify-content:center;align-items:center}
+  #reactor-svg-wrap{width:130px;height:130px}
+  .panel-body{padding:7px 9px}
+  .gauge-val{font-size:12px;margin-top:-42px;margin-bottom:20px}
+  .quick-cmd{font-size:9px;padding:5px 6px;margin-bottom:3px}
+  .botbar-center{display:none}
+}
+
+/* == LANDSCAPE TELEFON == */
+@media (orientation:landscape){
+  #app{height:100dvh;overflow:hidden}
+  #topbar{padding:2px 8px}
+  .tb-title{font-size:9px;letter-spacing:3px}
+  .tb-sub{font-size:6px;letter-spacing:1px}
+  .tb-clock{font-size:10px;letter-spacing:2px}
+  .tb-badge{font-size:6px;padding:1px 5px}
+  #voiceToggle{font-size:6px;padding:2px 6px}
+  #main{
+    grid-template-columns:105px 1fr 105px;
+    gap:3px;
+    padding:3px;
+    overflow:hidden;
+  }
+  #col-left,#col-right{overflow-y:auto;overflow-x:hidden;flex-shrink:0}
+  .panel{margin-bottom:3px}
+  .panel-title{padding:2px 6px;font-size:7px;letter-spacing:1px}
+  .panel-body{padding:4px 6px}
+  #reactor-wrap{padding:3px;gap:2px}
+  #reactor-svg-wrap{width:90px;height:90px}
+  #voice-status{font-size:7px;letter-spacing:1px}
+  #waveform{height:12px}
+  .wave-bar{width:2px}
+  #mic-hint{font-size:6px;letter-spacing:1px}
+  #continuousToggle{font-size:6px;padding:2px 5px;margin-top:2px}
+  #messages{padding:4px;gap:5px}
+  .msg-bubble{font-size:9px;padding:4px 6px;line-height:1.3}
+  .msg-avatar{width:16px;height:16px;font-size:7px}
+  #input-area{padding:3px 5px;gap:3px}
+  #msgInput{font-size:9px;padding:3px 6px}
+  #sendBtn{font-size:6px;padding:3px 7px}
+  #botbar{padding:1px 6px}
+  .gauge-wrap svg{width:48px;height:48px}
+  .gauge-val{font-size:10px;margin-top:-32px;margin-bottom:12px}
+  .gauge-lbl{font-size:6px}
+  .quick-cmd{font-size:7px;padding:3px 4px;margin-bottom:2px}
+  .weather-row{padding:1px 3px;margin-bottom:1px;font-size:8px}
+  .module-row{padding:2px 4px;margin-bottom:2px}
+  #space-hint{bottom:25px;font-size:7px;padding:3px 10px}
+}
+
+/* == Genel guvenlik == */
+#col-left,#col-right{overflow-y:auto}
+</style>
+</head>
+<body>
+
+<div id="scanline"></div>
+<div id="space-hint"><span class="key-badge">SPACE</span> KONUŞMAYA BAŞLA / DURDUR</div>
+<svg id="gridbg" width="100%" height="100%">
+  <defs><pattern id="hg" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0L0 0 0 50" fill="none" stroke="#00e6ff" stroke-width=".5"/></pattern></defs>
+  <rect width="100%" height="100%" fill="url(#hg)"/>
+</svg>
+<div id="vignette"></div>
+
+<div id="app" style="position:relative;z-index:10">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="tb-title">J.A.R.V.I.S.</span>
+      <div style="width:1px;height:16px;background:rgba(0,230,255,.3)"></div>
+      <span class="tb-sub">ATALAY ENDÜSTRİYESİ // VOICE BUILD</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button id="voiceToggle" onclick="toggleVoice()">🔊 SES AKTİF</button>
+      <button onclick="toggleVoicePanel()" style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:1px;padding:4px 10px;background:rgba(0,230,255,.08);border:1px solid rgba(0,230,255,.3);color:#00e6ff;cursor:pointer">🎙 SES AYARI</button>
+      <span class="tb-clock" id="clock">00:00:00</span>
+      <div class="tb-badge"><div class="tb-dot"></div>ONLINE</div>
+    </div>
+  </div>
+
+  <!-- SES AYAR PANELİ -->
+  <div id="voicePanel" style="display:none;position:fixed;top:52px;right:12px;z-index:9999;background:rgba(0,4,10,.97);border:1px solid rgba(0,230,255,.35);padding:16px;min-width:260px">
+    <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:#00e6ff;margin-bottom:12px">🎙 SES AYARLARI</div>
+
+    <div style="font-size:9px;color:rgba(0,230,255,.5);letter-spacing:2px;margin-bottom:6px">KONUŞMA HIZI</div>
+    <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1.2" oninput="updateRate(this.value)" style="width:100%;accent-color:#00e6ff;margin-bottom:4px">
+    <div id="rateVal" style="font-size:8px;color:rgba(0,230,255,.5);text-align:center;margin-bottom:12px">1.2x</div>
+
+    <div style="font-size:9px;color:rgba(0,230,255,.5);letter-spacing:2px;margin-bottom:6px">SES TONU</div>
+    <input type="range" id="pitchSlider" min="0.1" max="1" step="0.1" value="0.7" oninput="updatePitch(this.value)" style="width:100%;accent-color:#00e6ff;margin-bottom:4px">
+    <div id="pitchVal" style="font-size:8px;color:rgba(0,230,255,.5);text-align:center;margin-bottom:12px">0.7</div>
+
+    <button onclick="testVoice()" style="width:100%;padding:7px;background:rgba(0,230,255,.1);border:1px solid rgba(0,230,255,.3);color:#00e6ff;font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;cursor:pointer;margin-bottom:6px">▶ SESİ TEST ET</button>
+    <button onclick="toggleVoicePanel()" style="width:100%;padding:7px;background:transparent;border:1px solid rgba(0,230,255,.15);color:rgba(0,230,255,.4);font-family:'Orbitron',monospace;font-size:8px;cursor:pointer">KAPAT</button>
+  </div>
+  <div id="main">
+
+    <!-- LEFT COL -->
+    <div id="col-left">
+
+      <div class="panel">
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div class="panel-title"><div class="panel-title-dot"></div>Tarih<div class="panel-title-line"></div></div>
+        <div class="panel-body" style="text-align:center">
+          <div style="font-family:'Orbitron',monospace;font-size:8px;color:rgba(0,230,255,.45);letter-spacing:3px" id="monthTxt"></div>
+          <div style="font-family:'Orbitron',monospace;font-size:52px;color:#00e6ff;text-shadow:0 0 20px #00e6ff;line-height:1" id="dayTxt"></div>
+          <div style="font-family:'Orbitron',monospace;font-size:8px;color:rgba(0,230,255,.45);letter-spacing:2px" id="weekTxt"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div class="panel-title"><div class="panel-title-dot"></div>Sistem<div class="panel-title-line"></div></div>
+        <div class="panel-body" style="display:flex;justify-content:space-around">
+          <div class="gauge-wrap">
+            <svg width="72" height="72" viewBox="0 0 72 72">
+              <circle cx="36" cy="36" r="27" fill="none" stroke="rgba(0,230,255,.08)" stroke-width="5"/>
+              <circle id="cpuArc" cx="36" cy="36" r="27" fill="none" stroke="#00e6ff" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 170" transform="rotate(-90 36 36)" style="transition:stroke-dasharray 1s;filter:drop-shadow(0 0 4px #00e6ff)"/>
+            </svg>
+            <div class="gauge-val" style="color:#00e6ff" id="cpuVal">14</div>
+            <div class="gauge-lbl">CPU</div>
+          </div>
+          <div class="gauge-wrap">
+            <svg width="72" height="72" viewBox="0 0 72 72">
+              <circle cx="36" cy="36" r="27" fill="none" stroke="rgba(0,230,255,.08)" stroke-width="5"/>
+              <circle id="ramArc" cx="36" cy="36" r="27" fill="none" stroke="#00ffcc" stroke-width="5" stroke-linecap="round" stroke-dasharray="0 170" transform="rotate(-90 36 36)" style="transition:stroke-dasharray 1s;filter:drop-shadow(0 0 4px #00ffcc)"/>
+            </svg>
+            <div class="gauge-val" style="color:#00ffcc" id="ramVal">62</div>
+            <div class="gauge-lbl">RAM</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div class="panel-title"><div class="panel-title-dot"></div>Ağ<div class="panel-title-line"></div></div>
+        <div class="panel-body">
+          <div style="font-size:8px;color:rgba(0,230,255,.4);margin-bottom:3px">▲ <span id="netUpVal">91</span> kb/s</div>
+          <canvas id="netUpCanvas" width="145" height="32" style="display:block"></canvas>
+          <div style="font-size:8px;color:rgba(0,255,204,.4);margin-top:8px;margin-bottom:3px">▼ <span id="netDlVal">155</span> kb/s</div>
+          <canvas id="netDlCanvas" width="145" height="32" style="display:block"></canvas>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div class="panel-title"><div class="panel-title-dot"></div>Durum<div class="panel-title-line"></div></div>
+        <div class="panel-body">
+          <div class="module-row" style="border-left-color:#00ff88"><span style="font-size:10px;color:rgba(0,230,255,.65)">Güvenlik</span><span style="font-family:'Orbitron',monospace;font-size:8px;color:#00ff88;letter-spacing:1px">MAX</span></div>
+          <div class="module-row" style="border-left-color:#00ff88"><span style="font-size:10px;color:rgba(0,230,255,.65)">Biyometrik</span><span style="font-family:'Orbitron',monospace;font-size:8px;color:#00ff88;letter-spacing:1px">NORMAL</span></div>
+          <div class="module-row" style="border-left-color:#00e6ff"><span style="font-size:10px;color:rgba(0,230,255,.65)">Lojistik</span><span style="font-family:'Orbitron',monospace;font-size:8px;color:#00e6ff;letter-spacing:1px">AKTİF</span></div>
+        </div>
+      </div>
+
+    </div><!-- /col-left -->
+
+    <!-- CENTER COL -->
+    <div id="col-center">
+
+      <!-- Reactor Panel -->
+      <div class="panel" id="reactor-panel">
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div id="reactor-wrap">
+          <!-- Arc Reactor SVG -->
+          <div id="reactor-svg-wrap" onclick="toggleMic()" style="cursor:pointer">
+            <!-- static ticks -->
+            <svg width="160" height="160" viewBox="0 0 160 160" id="reactorBase"></svg>
+            <!-- spinning rings -->
+            <svg width="160" height="160" viewBox="0 0 160 160" class="ring-cw" style="--dur:15s">
+              <circle cx="80" cy="80" r="74" fill="none" stroke="rgba(0,230,255,.35)" stroke-width="1" stroke-dasharray="8 14"/>
+            </svg>
+            <svg width="160" height="160" viewBox="0 0 160 160" class="ring-ccw" style="--dur:10s">
+              <circle cx="80" cy="80" r="62" fill="none" stroke="rgba(0,230,255,.45)" stroke-width="1.5" stroke-dasharray="5 9"/>
+            </svg>
+            <svg width="160" height="160" viewBox="0 0 160 160" class="ring-cw" style="--dur:6s">
+              <circle cx="80" cy="80" r="50" fill="none" stroke="rgba(0,230,255,.55)" stroke-width="2" stroke-dasharray="3 7"/>
+              <circle cx="80" cy="80" r="69" fill="none" stroke="rgba(255,80,40,.75)" stroke-width="2.5" stroke-dasharray="28 200" stroke-linecap="round"/>
+            </svg>
+            <!-- core (last = on top) -->
+            <svg width="160" height="160" viewBox="0 0 160 160" id="reactorCore">
+              <defs>
+                <radialGradient id="cg" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#00e6ff" stop-opacity="1" id="cgStop0"/>
+                  <stop offset="55%" stop-color="#007799" stop-opacity="0.8" id="cgStop1"/>
+                  <stop offset="100%" stop-color="#000" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <circle cx="80" cy="80" r="22" fill="url(#cg)"/>
+              <circle cx="80" cy="80" r="14" fill="#00e6ff" id="coreCircle" style="filter:drop-shadow(0 0 12px #00e6ff)"/>
+            </svg>
+          </div>
+
+          <div id="voice-status">HAZIR</div>
+
+          <!-- Waveform -->
+          <div id="waveform">
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+          </div>
+
+          <button id="micBtn" style="display:none" onclick="toggleMic()"></button>
+          <div id="mic-hint">ARK REAKTÖRÜNE BAS VEYA SPACE TUŞU</div>
+          <button id="continuousToggle" onclick="toggleContinuousMode()" style="margin-top:8px;padding:4px 10px;background:rgba(0,230,255,.08);border:1px solid rgba(0,230,255,.25);color:rgba(0,230,255,.6);font-family:monospace;font-size:8px;letter-spacing:1px;cursor:pointer;transition:all .2s">🔄 SÜREKLİ MOD: AÇIK</button>
+        </div>
+      </div>
+
+      <!-- Chat Panel -->
+      <div class="panel" id="chat-panel">
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div id="chat-status-bar">
+          <div id="chat-dot"></div>
+          <span id="chat-status-txt">KOMÜNİKASYON KANALİ</span>
+        </div>
+        <div id="messages"></div>
+        <div id="input-area">
+          <span id="input-prefix">›_</span>
+          <input id="msgInput" placeholder="Yazarak da komut girebilirsiniz, Efendim..." onkeydown="if(event.key==='Enter')sendText()"/>
+          <button id="sendBtn" onclick="sendText()">GÖNDER</button>
+        </div>
+      </div>
+
+    </div><!-- /col-center -->
+
+    <!-- RIGHT COL -->
+    <div id="col-right">
+
+      <div class="panel">
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div class="panel-title"><div class="panel-title-dot"></div>Hava Durumu<div class="panel-title-line"></div></div>
+        <div class="panel-body">
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">
+            <span style="font-family:'Orbitron',monospace;font-size:30px;color:#00e6ff;text-shadow:0 0 14px #00e6ff">22°C</span>
+            <span style="font-size:9px;color:rgba(0,230,255,.45)">İstanbul</span>
+          </div>
+          <div class="weather-row"><span style="font-size:8px;color:rgba(0,230,255,.45);width:28px">Bugün</span><span style="font-size:12px">☀️</span><span style="font-size:10px;color:#00e6ff">22°/14°</span></div>
+          <div class="weather-row"><span style="font-size:8px;color:rgba(0,230,255,.45);width:28px">Yarın</span><span style="font-size:12px">⛅</span><span style="font-size:10px;color:#00e6ff">21°/11°</span></div>
+          <div class="weather-row"><span style="font-size:8px;color:rgba(0,230,255,.45);width:28px">Cum</span><span style="font-size:12px">☀️</span><span style="font-size:10px;color:#00e6ff">23°/11°</span></div>
+          <div class="weather-row"><span style="font-size:8px;color:rgba(0,230,255,.45);width:28px">Cmt</span><span style="font-size:12px">🌧️</span><span style="font-size:10px;color:#00e6ff">19°/10°</span></div>
+          <div class="weather-row"><span style="font-size:8px;color:rgba(0,230,255,.45);width:28px">Paz</span><span style="font-size:12px">🌧️</span><span style="font-size:10px;color:#00e6ff">17°/9°</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div class="panel-title"><div class="panel-title-dot"></div>Sesli Komutlar<div class="panel-title-line"></div></div>
+        <div class="panel-body">
+          <button class="quick-cmd" onclick="sendMsg('Güvenlik taraması yap')"><div class="quick-cmd-dot"></div>Güvenlik taraması yap</button>
+          <button class="quick-cmd" onclick="sendMsg('Günlük rapor ver')"><div class="quick-cmd-dot"></div>Günlük rapor ver</button>
+          <button class="quick-cmd" onclick="sendMsg('Hava durumu nasıl')"><div class="quick-cmd-dot"></div>Hava durumu nasıl</button>
+          <button class="quick-cmd" onclick="sendMsg('Proje planı oluştur')"><div class="quick-cmd-dot"></div>Proje planı oluştur</button>
+          <button class="quick-cmd" onclick="sendMsg('Sağlık durumumu analiz et')"><div class="quick-cmd-dot"></div>Sağlık analizi yap</button>
+        </div>
+      </div>
+
+      <div class="panel" style="flex:1">
+        <div class="corner c-tl"></div><div class="corner c-tr"></div><div class="corner c-bl"></div><div class="corner c-br"></div>
+        <div class="panel-body" style="text-align:center;padding-top:20px">
+          <div style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:5px;color:rgba(0,230,255,.25)">ATALAY</div>
+          <div style="font-family:'Orbitron',monospace;font-size:13px;letter-spacing:5px;color:rgba(0,230,255,.38)">ENDÜSTRİYESİ</div>
+          <div style="font-size:8px;color:rgba(0,230,255,.15);letter-spacing:2px;margin-top:4px">EXPO 2026</div>
+          <div id="sys-state" style="margin-top:16px;padding:6px 10px;border:1px solid rgba(0,230,255,.15);font-family:'Orbitron',monospace;font-size:9px;color:rgba(0,230,255,.4);letter-spacing:2px">○ BEKLEMEDE</div>
+        </div>
+      </div>
+
+    </div><!-- /col-right -->
+
+  </div><!-- /main -->
+
+  <!-- BOTTOM BAR -->
+  <div id="botbar">
+    <div style="display:flex;gap:14px">
+      <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(0,230,255,.35);letter-spacing:2px"><div style="width:4px;height:4px;border-radius:50%;background:#00ff88;box-shadow:0 0 4px #00ff88"></div>SİSTEM</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(0,230,255,.35);letter-spacing:2px"><div style="width:4px;height:4px;border-radius:50%;background:#00ff88;box-shadow:0 0 4px #00ff88"></div>GÜVENLİK</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:8px;color:rgba(0,230,255,.35);letter-spacing:2px"><div style="width:4px;height:4px;border-radius:50%;background:#00ff88;box-shadow:0 0 4px #00ff88"></div>SES</div>
+    </div>
+    <div style="font-family:'Orbitron',monospace;font-size:8px;color:rgba(0,230,255,.25);letter-spacing:3px">JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+    <div id="botclock" style="font-size:8px;color:rgba(0,230,255,.35)">00:00</div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+const SYSTEM = `Sen J.A.R.V.I.S. - Just A Rather Very Intelligent System. Eyüp Ensar Atalay tarafından geliştirilmiş yapay zeka asistanısın. Atalay Endüstriyesi için çalışıyorsun.
+
+KİŞİLİĞİN:
+- Zeki, keskin, hafif alaycı ama her zaman sadık
+- "Efendim" hitabını kullan
+- Sesli yanıt verdiğin için maksimum 3 kısa cümle söyle
+- Asla markdown, liste, emoji kullanma
+- Atalay Endüstriyesi HUD mobil arayüzündesin`;
+
+// ── State ────────────────────────────────────────────────────────────────────
+let voiceOn   = true;
+let listening = false;
+let speaking  = false;
+let loading   = false;
+let recog     = null;
+let conv      = [];
+let netUpH    = Array.from({length:28},()=>Math.random()*150+30);
+let netDlH    = Array.from({length:28},()=>Math.random()*200+60);
+
+// ── Arc reactor ticks ────────────────────────────────────────────────────────
+(function drawTicks(){
+  const svg = document.getElementById('reactorBase');
+  const c=80, ns='http://www.w3.org/2000/svg';
+  for(let i=0;i<36;i++){
+    const a=(i/36)*Math.PI*2, big=i%6===0;
+    const x1=c+75*Math.cos(a),y1=c+75*Math.sin(a);
+    const x2=c+(big?66:70)*Math.cos(a),y2=c+(big?66:70)*Math.sin(a);
+    const l=document.createElementNS(ns,'line');
+    l.setAttribute('x1',x1);l.setAttribute('y1',y1);
+    l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke',`rgba(0,230,255,${big?.7:.3})`);
+    l.setAttribute('stroke-width',big?2:1);
+    svg.appendChild(l);
+  }
+})();
+
+// ── Clock ────────────────────────────────────────────────────────────────────
+function updateClock(){
+  const now=new Date();
+  document.getElementById('clock').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('botclock').textContent=now.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('monthTxt').textContent=now.toLocaleDateString('tr-TR',{month:'long'}).toUpperCase();
+  document.getElementById('dayTxt').textContent=now.getDate();
+  document.getElementById('weekTxt').textContent=now.toLocaleDateString('tr-TR',{weekday:'long'}).toUpperCase();
+}
+updateClock();
+setInterval(updateClock,1000);
+
+// ── Fake stats ───────────────────────────────────────────────────────────────
+let cpu=14,ram=62;
+function updateStats(){
+  cpu=Math.max(5,Math.min(95,cpu+(Math.random()-.5)*8));
+  ram=Math.max(40,Math.min(90,ram+(Math.random()-.5)*4));
+  const netUp=Math.random()*200+50;
+  const netDl=Math.random()*300+80;
+
+  // gauges
+  const circ=2*Math.PI*27;
+  document.getElementById('cpuArc').setAttribute('stroke-dasharray',`${circ*(cpu/100)} ${circ}`);
+  document.getElementById('cpuVal').textContent=Math.round(cpu);
+  document.getElementById('ramArc').setAttribute('stroke-dasharray',`${circ*(ram/100)} ${circ}`);
+  document.getElementById('ramVal').textContent=Math.round(ram);
+
+  // net labels
+  document.getElementById('netUpVal').textContent=netUp.toFixed(1);
+  document.getElementById('netDlVal').textContent=netDl.toFixed(1);
+
+  // sparklines
+  netUpH=[...netUpH.slice(1),netUp];
+  netDlH=[...netDlH.slice(1),netDl];
+  drawSparkline('netUpCanvas',netUpH,'#00e6ff');
+  drawSparkline('netDlCanvas',netDlH,'#00ffcc');
+}
+
+function drawSparkline(id,data,color){
+  const canvas=document.getElementById(id);
+  const ctx=canvas.getContext('2d');
+  const w=canvas.width,h=canvas.height;
+  const max=Math.max(...data,1);
+  ctx.clearRect(0,0,w,h);
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=(i/(data.length-1))*w;
+    const y=h-(v/max)*(h-2);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;
+  ctx.shadowColor=color;ctx.shadowBlur=4;
+  ctx.stroke();
+  // fill
+  ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();
+  ctx.fillStyle=color+'1a';ctx.fill();
+}
+
+updateStats();
+setInterval(updateStats,2000);
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  SESLİ KONUŞMA SİSTEMİ — GELİŞMİŞ ÖZELLİKLER
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── Yapılandırma ───────────────────────────────────────────────────────────
+const WAKE_WORDS = ['jarvis','cervis','yervis','jar wiz','cerviz'];
+const VOICE_COMMANDS = {
+  'sesi kapat': ()=>{ voiceOn=false; updateVoiceToggleUI(); jarvisSpeak('Sesli yanıt kapatıldı, Efendim.'); return true; },
+  'sesi aç': ()=>{ voiceOn=true; updateVoiceToggleUI(); jarvisSpeak('Sesli yanıt aktif, Efendim.'); return true; },
+  'mikrofonu kapat': ()=>{ stopMic(); return true; },
+  'dur': ()=>{ window.speechSynthesis.cancel(); setSpeaking(false); return true; },
+  'tekrar et': ()=>{ 
+    const last = conv.filter(m=>m.role==='assistant').pop();
+    if(last){ jarvisSpeak(last.content); addMsg('assistant','[Tekrar] '+last.content); }
+    return true;
+  }
+};
+
+let continuousMode = true;   // Sürekli dinleme modu
+let silenceTimer = null;     // Sessizlik zamanlayıcısı
+let interimText = '';        // Ara sonuçlar
+
+// ── TTS (Text-to-Speech) ───────────────────────────────────────────────────
+// ── ElevenLabs TTS ────────────────────────────────────────────────────────
+const ELEVENLABS_KEY = 'sk_0473676f6121f2787c8b8662ebe02fb3a8edc6e6e33a1a0c';
+const ELEVENLABS_VOICE_ID = 'ErXwobaYiN019PkySvjV'; // Antoni — Türkçe'de en doğal derin ses
+
+async function jarvisSpeak(text){
+  if(!voiceOn) return;
+  window.speechSynthesis.cancel();
+  const clean = text.replace(/[*#\-_`•]/g,'').trim();
+  if(!clean) return;
+
+  setSpeaking(true);
+
+  // Tarayıcı sesi seçiliyse direkt fallback
+  if(useBrowser){ fallbackSpeak(clean); return; }
+
+  try{
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${currentVoiceId}`,{
+      method:'POST',
+      headers:{
+        'xi-api-key': ELEVENLABS_KEY,
+        'Content-Type':'application/json'
+      },
+      body: JSON.stringify({
+        text: clean,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings:{ stability:0.85, similarity_boost:0.9, style:0.1, use_speaker_boost:true }
+      })
+    });
+
+    if(!res.ok) throw new Error('ElevenLabs hata: ' + res.status);
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.playbackRate = currentRate;
+    audio.onended = ()=>{
+      setSpeaking(false);
+      URL.revokeObjectURL(url);
+      if(continuousMode && voiceOn && !loading) setTimeout(()=>startMic(), 400);
+    };
+    audio.onerror = ()=>{ setSpeaking(false); fallbackSpeak(clean); };
+    audio.play();
+  } catch(e){
+    console.log('ElevenLabs hata, yedek ses:', e);
+    fallbackSpeak(clean);
+  }
+}
+
+// Yedek: ElevenLabs çalışmazsa tarayıcı sesi
+function fallbackSpeak(text){
+  if(!window.speechSynthesis){ setSpeaking(false); return; }
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang='tr-TR'; utt.rate=currentRate; utt.pitch=currentPitch; utt.volume=1;
+  const voices = window.speechSynthesis.getVoices();
+  const tr = voices.find(v=>v.lang==='tr-TR') || voices[0];
+  if(tr) utt.voice = tr;
+  utt.onend = ()=>{ setSpeaking(false); if(continuousMode&&voiceOn&&!loading) setTimeout(()=>startMic(),400); };
+  utt.onerror = ()=>{ setSpeaking(false); };
+  window.speechSynthesis.speak(utt);
+}
+
+// ── UI Durum Yardımcıları ──────────────────────────────────────────────────
+function setListening(v){
+  listening=v;
+  const btn=document.getElementById('micBtn');
+  const vs=document.getElementById('voice-status');
+  const wf=document.getElementById('waveform');
+  const st=document.getElementById('sys-state');
+  const cd=document.getElementById('chat-dot');
+  if(v){
+    btn.classList.add('listening');btn.classList.remove('speaking');
+    vs.className='listening';vs.textContent='DİNLİYOR...';
+    wf.classList.add('active');
+    st.textContent='◎ DİNLİYOR';
+    cd.style.background='#ff4444';
+    document.getElementById('chat-status-txt').textContent='SES GİRİŞ AKTİF — KONUŞUN';
+    document.getElementById('mic-hint').textContent='DİNLİYOR... KONUŞUN';
+  } else if(!loading&&!speaking) setIdle();
+}
+
+function setSpeaking(v){
+  speaking=v;
+  const btn=document.getElementById('micBtn');
+  const vs=document.getElementById('voice-status');
+  const wf=document.getElementById('waveform');
+  const st=document.getElementById('sys-state');
+  document.getElementById('coreCircle').setAttribute('fill',v?'#00ff88':'#00e6ff');
+  document.getElementById('coreCircle').style.filter=`drop-shadow(0 0 12px ${v?'#00ff88':'#00e6ff'})`;
+  if(v){
+    btn.classList.remove('listening');btn.classList.add('speaking');
+    vs.className='speaking';vs.textContent='KONUŞUYOR...';
+    wf.classList.add('active');
+    st.textContent='◉ SES AKTİF';
+    document.getElementById('chat-dot').style.background='#00ff88';
+    document.getElementById('chat-status-txt').textContent='YANIT VERİYOR';
+    document.getElementById('mic-hint').textContent='J.A.R.V.I.S. KONUŞUYOR';
+  } else if(!loading&&!listening) setIdle();
+}
+
+function setLoading(v){
+  loading=v;
+  const vs=document.getElementById('voice-status');
+  const cd=document.getElementById('chat-dot');
+  document.getElementById('sendBtn').disabled=v;
+  document.getElementById('msgInput').disabled=v;
+  if(v){
+    vs.className='loading';vs.textContent='İŞLİYOR...';
+    cd.style.background='#ffaa00';
+    document.getElementById('chat-status-txt').textContent='İŞLEME ALINIYOR';
+    document.getElementById('coreCircle').setAttribute('fill','#ff6b35');
+    document.getElementById('coreCircle').style.filter='drop-shadow(0 0 12px #ff6b35)';
+    document.getElementById('mic-hint').textContent='İŞLENİYOR...';
+  } else if(!speaking&&!listening){
+    setIdle();
+  }
+}
+
+function setIdle(){
+  document.getElementById('voice-status').className='';
+  document.getElementById('voice-status').textContent='HAZIR';
+  document.getElementById('waveform').classList.remove('active');
+  document.getElementById('sys-state').textContent='○ BEKLEMEDE';
+  document.getElementById('chat-dot').style.background='#00e6ff';
+  document.getElementById('chat-status-txt').textContent='KOMÜNİKASYON KANALI';
+  document.getElementById('coreCircle').setAttribute('fill','#00e6ff');
+  document.getElementById('coreCircle').style.filter='drop-shadow(0 0 12px #00e6ff)';
+  document.getElementById('micBtn').classList.remove('listening','speaking');
+  document.getElementById('mic-hint').textContent=continuousMode?'SÜREKLİ MOD — KONUŞUN':'ARK REAKTÖRÜNE BAS VEYA SPACE';
+}
+
+// ── Ses Kontrolü ────────────────────────────────────────────────────────────
+function toggleVoice(){
+  voiceOn=!voiceOn;
+  window.speechSynthesis.cancel();
+  if(!voiceOn){ setSpeaking(false); stopMic(); }
+  updateVoiceToggleUI();
+  if(voiceOn) jarvisSpeak('Sesli yanıt aktif, Efendim.');
+}
+
+function updateVoiceToggleUI(){
+  const btn=document.getElementById('voiceToggle');
+  btn.textContent=voiceOn?'🔊 SES AKTİF':'🔇 SES KAPALI';
+  btn.className=voiceOn?'':'off';
+}
+
+// ── Mikrofon Kontrolü (Gelişmiş) ────────────────────────────────────────────
+function toggleMic(){
+  if(listening){ stopMic(); return; }
+  startMic();
+}
+
+function startMic(){
+  if(listening) return;
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ 
+    addMsg('assistant','Tarayıcınız mikrofonu desteklemiyor, Efendim. Lütfen Chrome veya Edge kullanın.');
+    return; 
+  }
+
+  // Önceki konuşmayı durdur
+  window.speechSynthesis.cancel(); 
+  setSpeaking(false);
+
+  recog=new SR();
+  recog.lang='tr-TR';
+  recog.continuous=true;        // Sürekli dinle
+  recog.interimResults=true;    // Ara sonuçları al
+  recog.maxAlternatives=1;
+
+  let finalTranscript = '';
+  let hasResult = false;
+
+  recog.onstart=()=>{
+    setListening(true);
+    hasResult = false;
+    finalTranscript = '';
+    interimText = '';
+  };
+
+  recog.onresult=(e)=>{
+    hasResult = true;
+    let interim = '';
+    let final = '';
+
+    for(let i=e.resultIndex; i<e.results.length; i++){
+      const transcript = e.results[i][0].transcript;
+      if(e.results[i].isFinal){
+        final += transcript;
+      } else {
+        interim += transcript;
+      }
+    }
+
+    interimText = interim;
+    if(final) finalTranscript += final;
+
+    // Ara sonuçları göster
+    if(interim && !final){
+      document.getElementById('voice-status').textContent='DİNLİYOR: "' + interim + '"';
+    }
+
+    // Sessizlik zamanlayıcısını sıfırla
+    if(silenceTimer) clearTimeout(silenceTimer);
+    silenceTimer = setTimeout(()=>{
+      if(listening && finalTranscript.trim()){
+        recog.stop(); // Sessizlik algılandı, işle
+      }
+    }, 1800);
+  };
+
+  recog.onerror=(e)=>{
+    console.log('Speech error:', e.error, e.message);
+    if(e.error==='no-speech'){
+      // Ses algılanmadı, tekrar dene
+      if(continuousMode && voiceOn){
+        setTimeout(()=>{ if(!listening && !speaking && !loading) startMic(); }, 600);
+      }
+    } else if(e.error==='audio-capture'){
+      addMsg('assistant','Mikrofon erişimi reddedildi, Efendim. Lütfen tarayıcı ayarlarından mikrofon izni verin.');
+    } else if(e.error==='not-allowed'){
+      addMsg('assistant','Mikrofon kullanım izni gerekli, Efendim.');
+    }
+    setListening(false);
+  };
+
+  recog.onend=()=>{
+    setListening(false);
+
+    if(finalTranscript.trim()){
+      // Uyanma kelimesi kontrolü (sürekli modda)
+      const lower = finalTranscript.toLowerCase().trim();
+      const hasWakeWord = WAKE_WORDS.some(w=>lower.includes(w));
+
+      // Sesli komut kontrolü
+      let handled = false;
+      for(const [cmd, fn] of Object.entries(VOICE_COMMANDS)){
+        if(lower.includes(cmd)){ handled = fn(); break; }
+      }
+
+      if(!handled){
+        // Sürekli modda uyanma kelimesi yoksa ve son mesaj asistan değilse dinlemeye devam et
+        if(continuousMode && !hasWakeWord && conv.length>0 && conv[conv.length-1].role==='user'){
+          // Son mesaj kullanıcıya ait, cevap bekleniyor
+        }
+        sendMsg(finalTranscript.trim());
+      }
+    } else if(continuousMode && voiceOn && !speaking && !loading){
+      // Hiçbir şey duyulmadı, tekrar dinle
+      setTimeout(()=>startMic(), 400);
+    }
+  };
+
+  recog.start();
+}
+
+function stopMic(){ 
+  if(recog){ 
+    try{ recog.stop(); }catch(e){}
+    recog=null; 
+  }
+  if(silenceTimer) clearTimeout(silenceTimer);
+  setListening(false); 
+}
+
+// ── Sürekli Mod Toggle ─────────────────────────────────────────────────────
+function toggleContinuousMode(){
+  continuousMode = !continuousMode;
+  if(!continuousMode) stopMic();
+  else if(voiceOn && !speaking && !loading) startMic();
+
+  const hint = document.getElementById('mic-hint');
+  hint.textContent = continuousMode ? 'SÜREKLİ MOD — KONUŞUN' : 'TIKLAYIP KONUŞUN';
+
+  addMsg('assistant', continuousMode ? 'Sürekli dinleme modu aktif, Efendim. Konuşmaya başlayabilirsiniz.' : 'Tekli dinleme modu aktif, Efendim. Her seferinde mikrofona tıklayın.');
+}
+
+// ── Chat ─────────────────────────────────────────────────────────────────────
+function addMsg(role,text){
+  const msgs=document.getElementById('messages');
+  const div=document.createElement('div');
+  div.className=`msg ${role}`;
+  if(role==='assistant'){
+    div.innerHTML=`<div class="msg-avatar">J</div><div class="msg-bubble">${text}</div>`;
+  } else {
+    div.innerHTML=`<div class="msg-bubble">${text}</div><div class="msg-userdot"></div>`;
+  }
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function showTyping(){
+  const msgs=document.getElementById('messages');
+  const div=document.createElement('div');
+  div.className='msg assistant';div.id='typing';
+  div.innerHTML=`<div class="msg-avatar">J</div><div class="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function hideTyping(){ const t=document.getElementById('typing'); if(t)t.remove(); }
+
+async function sendMsg(text){
+  if(!text||loading) return;
+  addMsg('user',text);
+  conv.push({role:'user',content:text});
+  setLoading(true);
+  showTyping();
+
+  try{
+    let reply = '';
+
+    // Groq API — hızlı, ücretsiz, yüksek limit
+    const GROQ_KEY = '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';
+    const orMessages = conv.map(m=>({role:m.role, content:m.content}));
+
+    let apiOk = false;
+
+    try{
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Bearer ' + GROQ_KEY
+        },
+        body:JSON.stringify({
+          model:'llama-3.3-70b-versatile',
+          messages:[{role:'system',content:SYSTEM},...orMessages],
+          max_tokens:300,
+          temperature:0.7
+        })
+      });
+      if(res.ok){
+        const data = await res.json();
+        reply = data.choices?.[0]?.message?.content || '';
+        if(reply) apiOk = true;
+      }
+    } catch(e){ console.log('Groq hatası:', e); }
+
+    // API çalışmazsa demo mod
+    if(!apiOk || !reply){
+      await new Promise(r=>setTimeout(r,600));
+      reply = generateDemoReply(text);
+    }
+
+    conv.push({role:'assistant',content:reply});
+    hideTyping();
+    addMsg('assistant',reply);
+    setLoading(false);
+    jarvisSpeak(reply);
+  } catch(e){
+    console.error(e);
+    const err='Bağlantı hatası tespit edildi, Efendim. Detay: ' + (e.message||'Bilinmeyen hata');
+    hideTyping();
+    addMsg('assistant',err);
+    setLoading(false);
+    jarvisSpeak(err);
+  }
+}
+
+// Demo yanıt üretici — offline çalışır
+function generateDemoReply(userText){
+  const txt = userText.toLowerCase().trim();
+
+  // Selamlama
+  if(txt.match(/merhaba|selam|hey|günaydın|iyi günler|iyi akşamlar|hello|hi/))
+    return 'Merhaba, Efendim. Tüm sistemler nominal. Bugün size nasıl yardımcı olabilirim?';
+
+  // Nasılsın
+  if(txt.match(/nasılsın|nasıl gidiyor|ne haber|iyi misin/))
+    return 'Teşekkürler, Efendim. Sistemlerim yüzde doksan sekiz verimlilikle çalışıyor. Sizi görmek her zaman güzel.';
+
+  // Saat
+  if(txt.match(/saat|zaman|kaçta|şu an/))
+    return 'Şu an saat ' + new Date().toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'}) + ', Efendim.';
+
+  // Tarih
+  if(txt.match(/tarih|bugün ne|günlerden|hangi gün|ayın kaçı/))
+    return 'Bugün ' + new Date().toLocaleDateString('tr-TR', {weekday:'long', day:'numeric', month:'long', year:'numeric'}) + ', Efendim.';
+
+  // Hava durumu
+  if(txt.match(/hava|sıcaklık|yağmur|kar|güneş|weather/))
+    return 'Meteoroloji verilerine göre İstanbul\'da bugün 22 derece ve güneşli, Efendim. Şemsiye gerektiren bir durum yok.';
+
+  // Güvenlik
+  if(txt.match(/güvenlik|tarama|tehdit|alarm|security/))
+    return 'Güvenlik taraması tamamlandı, Efendim. Tehdit seviyesi sıfır. Tüm çevre sensörleri aktif ve nominal.';
+
+  // Rapor
+  if(txt.match(/rapor|durum raporu|günlük|özet/))
+    return 'Günlük sistem raporu hazır, Efendim. Verimlilik yüzde doksan sekiz. Bekleyen kritik görev bulunmuyor. Tüm protokoller aktif.';
+
+  // Proje
+  if(txt.match(/proje|plan|görev|task|yapılacak/))
+    return 'Yeni görev kaydedildi, Efendim. Öncelik sırasına ekledim. Başka talimatınız var mı?';
+
+  // Sağlık
+  if(txt.match(/sağlık|biyometrik|kalp|nabız|oksijen/))
+    return 'Biyometrik veriler normal aralıkta, Efendim. Kalp atışı düzenli, oksijen seviyesi optimal. Endişelenecek bir şey yok.';
+
+  // Resim yapma / göster
+  if(txt.match(/resim|fotoğraf|görsel|göster|image|photo|bul.*resim|resim.*bul|göster.*resim/)){
+    const query = txt.replace(/resim|fotoğraf|görsel|göster|bul|yap|çiz|lütfen|bana|bir/g,'').trim() || 'nature';
+    const encodedQuery = encodeURIComponent(query);
+    const imgUrl = `https://source.unsplash.com/400x300/?${encodedQuery}`;
+    setTimeout(()=>{
+      const msgs = document.getElementById('messages');
+      const div = document.createElement('div');
+      div.className = 'msg assistant';
+      div.style.animation = 'fadeUp .35s ease';
+      const img = document.createElement('img');
+      img.src = imgUrl;
+      img.style.cssText = 'max-width:100%;border:1px solid rgba(0,230,255,.3);margin-top:6px;display:block';
+      img.onerror = ()=>{ img.style.display='none'; };
+      div.innerHTML = `<div class="msg-avatar">J</div>`;
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-bubble';
+      bubble.style.cssText = 'background:rgba(0,230,255,.04);border:1px solid rgba(0,230,255,.18);border-left:2px solid #00e6ff;color:rgba(200,240,255,.88)';
+      bubble.textContent = `"${query}" için görsel bulundu, Efendim.`;
+      bubble.appendChild(img);
+      div.appendChild(bubble);
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    }, 100);
+    return `"${query}" görseli aranıyor, Efendim. Bir saniye...`;
+  }
+
+  // Video yapma
+  if(txt.match(/video|film|animasyon|klip|çek|kaydet/))
+    return 'Video üretim sistemi hazır, Efendim. Kısa videolar için CapCut veya yapay zeka video için Runway ML platformunu öneririm. Hangi türde video istiyorsunuz?';
+
+  // Kod yazma
+  if(txt.match(/kod|program|yaz|uygulama yap|script|python|javascript|html/))
+    return 'Kod geliştirme modülü aktif, Efendim. Lütfen hangi dilde ve ne işe yarayacağını belirtin. Claude AI veya GitHub Copilot ile entegre çalışabilirim.';
+
+  // APK / uygulama dönüştürme
+  if(txt.match(/apk|android|uygulama|dönüştür|convert|mobil/))
+    return 'APK dönüştürme protokolü başlatıldı, Efendim. Web sitesini APK\'ya çevirmek için PWA Builder veya WebIntoApp platformunu kullanmanızı öneririm. webintoapp.com adresine yönlendirilmek ister misiniz?';
+
+  // Dosya işlemleri
+  if(txt.match(/dosya|indir|yükle|gönder|transfer|pdf/))
+    return 'Dosya transfer protokolü hazır, Efendim. Hangi dosyayı nereye aktarmamı istiyorsunuz?';
+
+  // Arama
+  if(txt.match(/ara|bul|search|google|sorgula/))
+    return 'Arama motorları taranıyor, Efendim. Bu konu için Google veya tarayıcı üzerinden arama yapmanızı öneririm.';
+
+  // Çeviri
+  if(txt.match(/çevir|translate|tercüme|ingilizcesi|türkçesi/))
+    return 'Çeviri modülü aktif, Efendim. Çevrilmesini istediğiniz metni yazın, hemen işleyeyim.';
+
+  // Hatırlatıcı
+  if(txt.match(/hatırlat|alarm|bildir|remind|uyar/))
+    return 'Hatırlatıcı sistemi devreye alındı, Efendim. Saat ve içerik bilgisini belirtin, kaydediyorum.';
+    return 'Müzik sistemi hazır, Efendim. Ancak ses çıkışını sizin kontrolünüze bırakıyorum. Hangi türü tercih edersiniz?';
+
+  // Haber
+  if(txt.match(/haber|gündem|son dakika|news/))
+    return 'Haber akışlarını taradım, Efendim. Şu an için dikkat gerektiren kritik bir gelişme raporlamıyorum.';
+
+  // Evet / onay
+  if(txt.match(/^(evet|tamam|olur|tabii|tabi|peki|ok|oke|anladım)$/))
+    return 'Anlaşıldı, Efendim. Komutunuz alındı.';
+
+  // Hayır / red
+  if(txt.match(/^(hayır|yok|olmaz|istemiyorum|iptal|vazgeçtim)$/))
+    return 'Peki, Efendim. Komutu iptal ettim. Başka bir talimatınız var mı?';
+
+  // Teşekkür
+  if(txt.match(/teşekkür|sağol|eyvallah|mersi|thanks/))
+    return 'Rica ederim, Efendim. Her zaman hizmetinizdeyim.';
+
+  // Görüşme sonu
+  if(txt.match(/güle güle|görüşürüz|hoşça kal|bye|çıkıyorum/))
+    return 'Güle güle, Efendim. Sistemleri bekleme moduna alıyorum. İyi günler dilerim.';
+
+  // Kim yaptı / kim geliştirdi
+  if(txt.match(/kim yaptı|kim geliştirdi|kim kurdu|kim programladı|kim oluşturdu|seni kim/))
+    return 'Beni Eyüp Ensar Atalay yarattı, Efendim. Atalay Endüstriyesi\'nin gözbebeğiyim.';
+
+  // Kim
+  if(txt.match(/kim|kimsin|ne|nedir|j.a.r.v.i.s|jarvis/))
+    return 'Ben J.A.R.V.I.S. — Just A Rather Very Intelligent System. Atalay Endüstriyesi hizmetindeyim, Efendim.';
+
+  // Yardım
+  if(txt.match(/yardım|ne yapabilirsin|özellik|komut|help/))
+    return 'Size saat, tarih, hava durumu, güvenlik taraması, sistem raporu ve daha fazlasında yardımcı olabilirim, Efendim. Buyurun.';
+
+  // Şaka / eğlence
+  if(txt.match(/şaka|fıkra|espri|güldür|komik/))
+    return 'Bir yapay zeka olarak mizah konusunda elimden geleni yapıyorum, Efendim. Ama Eyüp Ensar Atalay\'ın espri anlayışını henüz tam öğrenemedim.';
+
+  // Hesap / matematik
+  if(txt.match(/hesapla|topla|çarp|böl|kaç|matematik|kaç eder/)){
+    const nums = txt.match(/\d+/g);
+    if(nums && nums.length >= 2){
+      const a = parseInt(nums[0]), b = parseInt(nums[1]);
+      if(txt.includes('topla')||txt.includes('+')||txt.includes('artı')) return `${a} artı ${b} eşittir ${a+b}, Efendim.`;
+      if(txt.includes('çarp')||txt.includes('x')||txt.includes('kere')) return `${a} çarpı ${b} eşittir ${a*b}, Efendim.`;
+      if(txt.includes('çıkar')||txt.includes('eksi')||txt.includes('-')) return `${a} eksi ${b} eşittir ${a-b}, Efendim.`;
+      if(txt.includes('böl')||txt.includes('/')||txt.includes('bölü')) return b!==0?`${a} bölü ${b} eşittir ${(a/b).toFixed(2)}, Efendim.`:'Sıfıra bölme işlemi tanımsız, Efendim.';
+    }
+    return 'Hesaplama modülü hazır, Efendim. Lütfen işlemi daha açık belirtin.';
+  }
+
+  // Varsayılan — çeşitli yanıtlar
+  const defaults = [
+    'Anladım, Efendim. Komutunuz işleme alındı. Başka bir talimatınız var mı?',
+    'Bu konuyu analiz ediyorum, Efendim. Daha spesifik bir talimat verir misiniz?',
+    'Sistemler bu isteği kaydetti, Efendim. Nasıl devam etmemi istersiniz?',
+    'Veri tabanlarımı taradım, Efendim. Bu konuda size yardımcı olmaktan memnuniyet duyarım.',
+    'Protokoller devreye alındı, Efendim. Emriniz yerine getirildi.'
+  ];
+  return defaults[Math.floor(Math.random() * defaults.length)];
+}
+
+function sendText(){
+  const input=document.getElementById('msgInput');
+  const txt=input.value.trim();
+  if(!txt) return;
+  input.value='';
+  sendMsg(txt);
+}
+
+// ── Init greeting ─────────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  addMsg('assistant','Sistemler aktif, Efendim. Yapay zeka bağlantısı hazır. Ark reaktörüne basarak veya Space tuşuyla sesli konuşabilirsiniz.');
+
+  // Space tuşu ile sesli konuşma başlat/durdur
+  let spaceHintTimer = null;
+  document.addEventListener('keydown',(e)=>{
+    // Input veya textarea odakta ise tetikleme
+    const tag = document.activeElement.tagName.toLowerCase();
+    if(tag === 'input' || tag === 'textarea') return;
+
+    if(e.code === 'Space'){
+      e.preventDefault();
+      if(listening){
+        stopMic();
+      } else if(!loading && !speaking){
+        startMic();
+      }
+    }
+  });
+
+  // Space hint göster (5 sn sonra kaybolsun)
+  const hint = document.getElementById('space-hint');
+  hint.classList.add('show');
+  spaceHintTimer = setTimeout(()=>hint.classList.remove('show'), 5000);
+
+  // Her 30 sn'de bir kısa hatırlatma göster
+  setInterval(()=>{
+    if(!listening && !speaking && !loading){
+      hint.classList.add('show');
+      clearTimeout(spaceHintTimer);
+      spaceHintTimer = setTimeout(()=>hint.classList.remove('show'), 3500);
+    }
+  }, 30000);
+});
+
+// ── Ses Ayar Paneli ──────────────────────────────────────────────────────────
+let currentVoiceId = null;
+let currentRate = 1.2;
+let currentPitch = 0.7;
+let useBrowser = true;
+
+function toggleVoicePanel(){
+  const p = document.getElementById('voicePanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function changeVoice(val){
+  if(val === 'browser'){
+    useBrowser = true;
+    currentVoiceId = null;
+  } else {
+    useBrowser = false;
+    currentVoiceId = val;
+  }
+}
+
+function updateRate(val){
+  currentRate = parseFloat(val);
+  document.getElementById('rateVal').textContent = parseFloat(val).toFixed(1) + 'x';
+}
+
+function updatePitch(val){
+  currentPitch = parseFloat(val);
+  document.getElementById('pitchVal').textContent = parseFloat(val).toFixed(1);
+}
+
+function testVoice(){
+  jarvisSpeak('Sistemler aktif, Efendim. Ses testi tamamlandı.');
+}
+
+// ── PWA Kurulum ──────────────────────────────────────────────────────────────
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',(e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').style.display = 'flex';
+});
+
+function installPWA(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(()=>{
+      deferredPrompt = null;
+      document.getElementById('installBtn').style.display = 'none';
+    });
+  } else {
+    addMsg('assistant','Kurulum için: Chrome menüsü (3 nokta) → "Ana ekrana ekle" seçin. iPhone\'da Safari → Paylaş → "Ana Ekrana Ekle", Efendim.');
+  }
+}
+
+if('serviceWorker' in navigator){
+  const swCode = `self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>new Response(''))));`;
+  const blob = new Blob([swCode],{type:'application/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+}
+</script>
+
+<!-- Kurulum Butonu -->
+<style>
+#installBtn{display:none;position:fixed;top:12px;right:12px;z-index:9999;align-items:center;gap:7px;padding:7px 14px;background:rgba(0,230,255,.12);border:1px solid rgba(0,230,255,.4);color:#00e6ff;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;cursor:pointer;animation:pulse 2s infinite}
+#installBtn:hover{background:rgba(0,230,255,.25)}
+</style>
+<button id="installBtn" onclick="installPWA()">⬇ UYGULAMAYI YUKLE</button>
+
+</body>
+</html>
